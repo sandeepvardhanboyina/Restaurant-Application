@@ -1,29 +1,25 @@
 # Restaurant Application: Stakeholder Overview
 
-The application runs on Google Kubernetes Engine (GKE), with a public frontend, an internal API, and a MySQL database backed by persistent storage.
+Customers can browse the menu, place orders, and track their progress online. Restaurant staff can securely sign in to manage the menu and update orders.
 
-## Self-healing capabilities
+## Automatic recovery
 
-- Kubernetes restarts failed containers and recreates missing Pods to maintain the configured replica count.
-- Startup and liveness probes detect startup failures and unresponsive processes.
-- Readiness probes keep unready Pods out of normal Service traffic. Backend readiness also checks database connectivity.
-- Persistent storage preserves MySQL data when its Pod is replaced.
+The system checks whether the application is working and automatically attempts to restart parts that stop responding. This is called **self-healing** and reduces the need for manual intervention.
 
-Automatic recovery depends on available cluster resources and storage. With one replica per component, recovery can involve a service interruption; self-healing does not guarantee uninterrupted availability.
+Order and menu information is stored separately from the running application so it remains available after an application restart. Customers may experience a brief interruption during recovery.
 
-## Deployment availability
+## Application updates
 
-The current implementation uses **rolling updates**, not blue-green deployment. The frontend allows its existing Pod to stop before its replacement starts to fit the learning cluster's limited capacity. Brief downtime is therefore possible.
+The current setup may briefly interrupt access when a new version is released.
 
-**Blue-green deployment is a proposed improvement for releases targeting zero downtime.** It would keep the current version serving traffic while a separate new version is deployed and validated, then switch traffic to the new version. This requires additional capacity, compatible database changes, handling of in-flight requests, and tested traffic switching and rollback.
+An improvement under consideration is **blue-green deployment**: prepare and check the new version while customers continue using the existing version, then move customers to the new version when it is ready.
 
-Blue-green deployment and zero-downtime releases are not implemented or verified in the current configuration.
+The goal is to release updates without interrupting customers. This approach is not yet in place, so uninterrupted service cannot currently be promised.
 
-## Sensitive information
+## Protecting sensitive information
 
-- Database passwords, the administrator password, and the token-signing key are supplied through Kubernetes Secrets.
-- Credentials are configured at runtime rather than embedded in application code or Docker images.
-- Local credential files, `.env` and `k8s/secret.yaml`, are excluded by `.gitignore` and are not currently tracked by Git.
-- The shared example files contain no real credentials.
+- Passwords and access keys are managed separately from the application code using a feature called **Kubernetes Secrets**.
+- The files containing real credentials are excluded from normal code sharing and are not currently included in the project's tracked files.
+- Shared example files contain no real passwords.
 
-**Security policy: live secrets must never be committed or pushed to GitHub.** Git ignore rules support this policy but do not prevent forced commits or prove that repository history has never contained secrets.
+**Our policy is to never upload real passwords or access keys to GitHub, where the application code is shared.** The project has safeguards to help prevent accidental uploads; past uploads have not been independently audited.
