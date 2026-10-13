@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: restaurant-backend
+  ports:
+    - port: 8000
+      targetPort: http
+      name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restaurant-backend
+  template:
+    metadata:
+      labels:
+        app: restaurant-backend
+    spec:
+      containers:
+        - name: backend
+          image: sandeepboyina123/restaurant-backend:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: restaurant-config
+          env:
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: restaurant-secrets, key: MYSQL_PASSWORD}
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: restaurant-secrets, key: ADMIN_PASSWORD}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef: {name: restaurant-secrets, key: JWT_SECRET}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          startupProbe:
+            httpGet: {path: /api/health/live, port: http}
+            periodSeconds: 5
+            failureThreshold: 90
+          readinessProbe:
+            httpGet: {path: /api/health/ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet: {path: /api/health/live, port: http}
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
